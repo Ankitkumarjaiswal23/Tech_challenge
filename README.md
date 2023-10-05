@@ -1,14 +1,46 @@
-**Deploying a 3-Tier WordPress Architecture on AWS using Terraform.**                 
+**3-tier Environment Set-Up in AWS Cloud Using IaC tool (Terraform).**
 
+-> **Deploying a 3-Tier WordPress Architecture on AWS using Terraform.**                 
+
+ **There is basic Pre-requisites required before going to perform this project.** 
+ 
+These are like which I have understand and gone through are given below-  
+
+**-AWS Knowledge**  
+
+    Virtual Private Cloud (VPC) 
+    
+    Subnets, NACLs, Security groups, NAT gateways, Internet gateways 
+    
+    Elastic compute cloud EC2 
+    
+    Auto scaling 
+    
+    Application Load balancer 
+    
+    Relational database service 
+    
+    Install and configure AWS CLI locally. 
+    
+**-Terraform knowledge** 
+
+    Infrastructure as Code (IaC) Hashicorp Configuration Language (HCL) 
+    
+    Understanding of Terraform moduless 
+    
+    Install and configure Terraform locally. 
+    
+
+    
 **First of all we should know about the 3 tier architecture- ** 
 
 The 3-tier architecture is a common software architectural design that comprises three layers, each with its obligations:
 
-Presentation layer: This layer is responsible for presenting information to the end user, receiving data from the user and dealing with client interactions.
+**Presentation layer:** This layer is responsible for presenting information to the end user, receiving data from the user and dealing with client interactions.
 
-Application layer: This layer processes information/data and performs any business rationale/logic.
+**Application layer:** This layer processes information/data and performs any business rationale/logic.
 
-Data layer: This layer stores and manages data
+**Data layer:** This layer stores and manages data
 
 If done properly, this architecture provides an adaptable, versatile and manageable mode of deploying applications, taking factors such as high availability, scalability, security and cost-effectiveness into consideration.
 
@@ -568,6 +600,31 @@ sed -i "s/localhost/${db_endpoint}/g" /var/www/html/wordpress/wp-config.php
 **To run:**
 To create a replica of this project, simply follow the instructions provided in this section of the repository. Remember to change the values of the resources' attributes by tweaking the variables.tf file. If successful, the load balancer's DNS URL should redirect you to the Apache home page. To access the WordPress administrative configuration site, simply add '/wordpress' to this URL.
 
+**For more detail, How I performed this project you can see the below points for better understanding.**
+
+**AWS-3Tier-Wordpress-Architecture-with-Terraform**
+This terraform project automates the deployment of a 3-tier architecture in AWS with WordPress installed and configured on webservers. It creates the following resources:
+A custom VPC with 6 subnets: 2 public and 4 private, internet & NAT gateways, RDS MySQL databases & webservers in private subnets, security groups, a bastion host & an application load balancer in public subnets, an elastic file system, a Route53 hosted zone and autoscaling groups that create & scale bastion & webserver instances. It also creates an S3 bucket that securely stores terraform's state files.
+
+The bastion/jump host & application load balancer reside in the public presentation layer
+Wordpress application web servers are located in the private application layer
+MySQL database & its standby replica are in the private database layer
+
+**Prerequisites:**
+AWS CLI configured with your access and secret keys.
+Terraform installed on your local machine.
+You must specify your keypair in the variables.tf file
+You may also change name of VPC, CIDR, subnet IP addresses, database name/type, etc in the variables.tf file
+Initialize terraform, view project's creation plan & apply:
+terraform init
+terraform plan
+terraform apply
+At this point, you will be prompted for your sensitive values i.e database password & username
+Creation of resources will take a few minutes. After a successful run, the load balancer's DNS endpoint will be exposed as defined in the output.tf file. Copy this URL & paste in your browser with "/wordpress" and you will be redirected to the official Wordpress admin/registration page.
+
+And after the completion of the 3-tier wordpress Architecture we will see this below screen-
+
+![image](https://github.com/Ankitkumarjaiswal23/Tech_challenge/assets/112700507/12e0f419-d4f6-442a-8d03-918ab4c8cf0e)
 
 
 
