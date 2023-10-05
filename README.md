@@ -547,12 +547,7 @@ systemctl restart apache2
 
 apt install -y git binutils   
 
-sleep 40  
-
-
-# Clone amazon-efs-utils from GitHub   
-
-git clone https://github.com/aws/efs-utils  
+sleep 40   
 
 
 # Build and install the amazon-efs-utils DEB package  
@@ -576,8 +571,6 @@ mount -t efs -o tls ${efs_DNS}:/ /var/www/html/wordpress/
 
 
 # Download & extract wordpress zip file  
-
-wget https://wordpress.org/latest.tar.gz  
 
 tar -xzvf latest.tar.gz  
 
