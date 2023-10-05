@@ -120,6 +120,459 @@ terraform {
 }  
 
 
+**security_groups. tf:** This contains the configurations of all the security groups & rules used by various components in the architecture.
+
+# Security group for bastion/jump host  
+
+resource "aws_security_group" "jumphost_sg" {  
+
+  name        = "jumphost-SG"  
+  
+  description = "Allow inbound SSH traffic for jumphost"  
+  
+  vpc_id      = aws_vpc.project_vpc.id  
+  
+}  
+
+
+# Allow SSH to bastion/jump host   
+
+resource "aws_security_group_rule" "jumphost_ssh_rule" {  
+
+  security_group_id = aws_security_group.jumphost_sg.id  
+  
+  type              = "ingress"  
+  
+  from_port         = 22  
+  
+  to_port           = 22  
+  
+  protocol          = "tcp"  
+  
+  cidr_blocks       = ["0.0.0.0/0"]   
+  
+}  
+
+
+# Allow outbound traffic  
+
+resource "aws_security_group_rule" "jumphost_outbound_rule" {  
+
+  security_group_id = aws_security_group.jumphost_sg.id   
+  
+  type              = "egress"  
+  
+  from_port         = 0 
+  
+  to_port           = 0  
+  
+  protocol          = "-1"  
+  
+  cidr_blocks       = ["0.0.0.0/0"]  
+  
+}  
+
+ 
+# Security group for elastic file system  
+
+resource "aws_security_group" "efs_sg" {  
+
+  name        = "efs-access"   
+  
+  description = "Allow NFS traffic"  
+  
+  vpc_id      = aws_vpc.project_vpc.id  
+  
+}  
+
+
+resource "aws_security_group_rule" "nfs_rule" {  
+
+  security_group_id        = aws_security_group.efs_sg.id  
+  
+  type                     = "ingress"  
+  
+  from_port                = 2049  
+  
+  to_port                  = 2049  
+  
+  protocol                 = "tcp"  
+  
+  source_security_group_id = aws_security_group.efs_sg.id  
+  
+}  
+
+**network. tf:** Sets up a custom VPC for the project. It defines the network infrastructure, including public & private subnets, which enables better security and isolation for each tier. Other components are internet gateway, NAT gateway, route tables & associations, etc. 
+
+# Create VPC 
+
+resource "aws_vpc" "project_vpc" { 
+
+  cidr_block           = var.vpc_cidr 
+  
+  enable_dns_hostnames = true 
+  
+  enable_dns_support   = true 
+  
+
+  tags = {  
+  
+    Name = var.vpc_name  
+    
+  }  
+  
+}  
+
+
+# Create internet gateway  
+
+resource "aws_internet_gateway" "vpc_igw" {  
+
+  vpc_id = aws_vpc.project_vpc.id  
+  
+
+  tags = {  
+  
+    Name = "vpc-igw"  
+    
+  }  
+  
+}  
+
+
+# Create public subnets for web tier  
+
+resource "aws_subnet" "public_subnets" {  
+
+...  
+
+...  
+
+**database. tf:** Creates a primary MySQL RDS instance and a replica (stand-by) instance in the database layer.
+
+# Create RDS instance 
+
+resource "aws_db_instance" "wordpress_db" { 
+
+  identifier              = var.primary_rds_identifier 
+  
+  availability_zone       = var.az[0] 
+  
+  allocated_storage       = 10 
+  
+  engine                  = "mysql"  
+  
+  engine_version          = "8.0.32" 
+  
+  instance_class          = var.db_instance_type  
+  
+  storage_type            = "gp2"  
+  
+  db_subnet_group_name    = aws_db_subnet_group.RDS_subnet_grp.name  
+  
+  vpc_security_group_ids  = [aws_security_group.db_server_sg.id]  
+  
+  db_name                 = var.database_name  
+  
+  username                = var.database_user  
+  
+  password                = var.database_password  
+  
+  skip_final_snapshot     = true  
+  
+  backup_retention_period = 7  
+  
+
+  # Make sure RDS ignores any manual password change  
+  
+  lifecycle {  
+  
+    ignore_changes = [password]  
+    
+  }  
+  
+}  
+
+
+# Create RDS instance replica  
+
+resource "aws_db_instance" "wordpress_db_replica" {  
+
+...  
+
+... 
+
+**compute. tf:** This file sets up the compute resources for the web and app tiers, including an elastic file system, launch templates, auto-scaling groups, an application load balancer & its target groups.
+
+
+...
+...
+# Autoscaling group for application servers 
+
+resource "aws_autoscaling_group" "app_server_asg" { 
+
+  name_prefix         = "app-server-ASG" 
+  
+  min_size            = 2 
+  
+  max_size            = 4  
+  
+  desired_capacity    = 2  
+  
+  vpc_zone_identifier = aws_subnet.private_app_subnets.*.id  
+  
+  target_group_arns   = [aws_lb_target_group.alb_target_grp.arn]  
+  
+
+  launch_template {  
+  
+    id      = aws_launch_template.app_server_lt.id  
+    
+    version = "$Default"  
+    
+  }  
+  
+
+  tag {  
+  
+    key                 = "Name"  
+    
+    value               = "app-server"  
+    
+    propagate_at_launch = true  
+    
+  }  
+  
+
+  lifecycle {  
+  
+    create_before_destroy = true  
+     
+  }  
+  
+
+  depends_on = [aws_db_instance.wordpress_db, aws_efs_file_system.wordpress_EFS, aws_efs_mount_target.efs_mount]  
+  
+} 
+
+**route53. tf:** This lets us route end-users to our application using a custom internet domain name. It creates a hosted zone and name servers that can be used to propagate a domain we own.
+
+# Create hosted zone and subdomain for load balancer DNS name  
+
+resource "aws_route53_zone" "wp_zone" {  
+
+  name = var.domain 
+  
+}  
+
+
+resource "aws_route53_record" "a_record" {  
+
+  zone_id = aws_route53_zone.wp_zone.zone_id  
+  
+  name    = var.subdomain  
+  
+  type    = "A"  
+  
+
+  alias {  
+  
+    name                   = aws_lb.wordpress_alb.dns_name  
+    
+    zone_id                = aws_lb.wordpress_alb.zone_id  
+    
+    evaluate_target_health = true  
+    
+  }  
+  
+}  
+
+**output. tf**: Requests for the exposure of data about specified resources within our configuration. Here, we are exposing Route53 name servers, the load balancer's URL, and the endpoints for the database and elastic file system.
+
+
+... 
+
+...  
+
+# Loadbalancer DNS name  
+
+output "ALB_DNS" {  
+
+  value = aws_lb.wordpress_alb.dns_name  
+  
+}  
+
+
+# NS records  
+
+output "name_servers" {  
+
+  value       = aws_route53_zone.wp_zone.name_servers  
+  
+  description = "records of domain name servers"  
+  
+}  
+
+**variables. tf:** This contains input variables that are used to pass values from outside of the configuration. They are used to assign dynamic values to terraform's resource attributes.
+
+# AWS region  
+
+variable "aws_region" {  
+
+  type        = string  
+  
+  default     = "us-east-1"  
+  
+  description = "aws region"  
+  
+}  
+
+
+# VPC name  
+
+variable "vpc_name" {  
+
+  type        = string  
+  
+  default     = "project-vpc"  
+  
+  description = "name of VPC"  
+  
+}  
+
+
+# VPC CIDR   
+
+variable "vpc_cidr" {   
+
+  type        = string   
+  
+  default     = "172.20.0.0/20"  
+  
+  description = "VPC CIDR block"   
+  
+}
+
+# Public subnets CIDR list  
+
+variable "public_subnets_cidr" {  
+
+  type        = list(string)  
+  
+  default     = ["172.20.1.0/24", "172.20.2.0/24"]  
+  
+  description = "public subnets CIDR"   
+  
+}   
+
+...   
+
+...   
+
+
+**userdata. tpl:** A bash script containing a collection of commands being passed to our web servers at launch time. This script creates LAMP servers, installs WordPress, automatically retrieves details of our database and populates them in the WordPress configuration file. It also mounts the elastic file system on the WordPress directory, allowing each web server to share the same WordPress files and any changes made to these files.
+
+
+#!/bin/bash  
+
+# WORDPRESS INSTALLER  
+
+
+# Variables will be populated by terraform template  
+
+db_username=${db_username}  
+
+db_user_password=${db_user_password}  
+
+db_name=${db_name}  
+
+db_endpoint=${db_endpoint}  
+
+efs_DNS=${efs_DNS}  
+
+
+# Install LAMP   
+
+apt update  
+
+apt install -y apache2 php libapache2-mod-php php-mysql mysql-server  
+
+
+# Change owner & permission of /var/www directory   
+
+usermod -a -G apache ubuntu  
+
+chown -R ubuntu:apache /var/www   
+
+chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;  
+
+find /var/www -type f -exec sudo chmod 0664 {} \;  
+
+systemctl restart apache2  
+
+
+# Install git and binutils (binutils is required for building DEB packages)  
+
+apt install -y git binutils   
+
+sleep 40  
+
+
+# Clone amazon-efs-utils from GitHub   
+
+git clone https://github.com/aws/efs-utils  
+
+
+# Build and install the amazon-efs-utils DEB package  
+
+cd efs-utils/  
+
+./build-deb.sh  
+
+apt-get -y install ./build/amazon-efs-utils*deb  
+
+sleep 40  
+
+
+# Mount EFS in wordpress directory  
+
+cd /var/www/html  
+
+mkdir wordpress/  
+
+mount -t efs -o tls ${efs_DNS}:/ /var/www/html/wordpress/  
+
+
+# Download & extract wordpress zip file  
+
+wget https://wordpress.org/latest.tar.gz  
+
+tar -xzvf latest.tar.gz  
+
+rm latest.tar.gz  
+
+
+# Create wordpress configuration file and update database values  
+
+cp /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php 
+
+sed -i "s/database_name_here/${db_name}/g" /var/www/html/wordpress/wp-config.php 
+
+sed -i "s/username_here/${db_username}/g" /var/www/html/wordpress/wp-config.php 
+
+sed -i "s/password_here/${db_user_password}/g" /var/www/html/wordpress/wp-config.php  
+
+sed -i "s/localhost/${db_endpoint}/g" /var/www/html/wordpress/wp-config.php 
+
+
+**To run:**
+To create a replica of this project, simply follow the instructions provided in this section of the repository. Remember to change the values of the resources' attributes by tweaking the variables.tf file. If successful, the load balancer's DNS URL should redirect you to the Apache home page. To access the WordPress administrative configuration site, simply add '/wordpress' to this URL.
+
+
+
+
+
+
 
 
 
