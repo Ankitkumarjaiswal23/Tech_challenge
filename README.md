@@ -619,6 +619,8 @@ And after the completion of the 3-tier wordpress Architecture we will see this b
 
 ![image](https://github.com/Ankitkumarjaiswal23/Tech_challenge/assets/112700507/12e0f419-d4f6-442a-8d03-918ab4c8cf0e)
 
+Actually, this is how I performed 3-tier wordpress configuration. For any queries please reachout to directly over email or linkedin.
+
 
 
 
