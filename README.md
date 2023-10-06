@@ -7,7 +7,7 @@ To retrieve and formatting AWS instance metadata, I followed these steps:
 
 
 1. Ensure we have the AWS CLI and jq installed on our AWS EC2 instance.
-2. 
+   
 
 jq is generally lightweight and powerful command-line tool used for processing JSON data.  
 
@@ -32,7 +32,7 @@ jq --version
 
 
 3. Before executing the meta data script configure the aws cli using the below command:
-4. 
+   
 
 aws configure  
 
