@@ -6,7 +6,7 @@ I have tried doing this in my console.
 To retrieve and formatting AWS instance metadata, I followed these steps: 
 
 
-1. Ensure we have the AWS CLI and jq installed on our AWS EC2 instance.
+**1. Ensure we have the AWS CLI and jq installed on our AWS EC2 instance.**
    
 
 jq is generally lightweight and powerful command-line tool used for processing JSON data.  
@@ -23,7 +23,7 @@ sudo yum update
 sudo yum install jq  
 
 
-2. check the version of AWS CLI and jq using the below commands:
+**2. check the version of AWS CLI and jq using the below commands:**
    
 
 aws --version  
@@ -31,7 +31,7 @@ aws --version
 jq --version  
 
 
-3. Before executing the meta data script configure the aws cli using the below command:
+**3. Before executing the meta data script configure the aws cli using the below command:**
    
 
 aws configure  
@@ -45,19 +45,19 @@ and secret key ID
 ![image](https://github.com/Ankitkumarjaiswal23/Tech_challenge/assets/112700507/4d0978f7-b2d0-4f86-89cd-e0390ba108ec)   
 
 
-4. Create a new file, named get_instance_metadata.sh,
+**4. Create a new file, named get_instance_metadata.sh,**
     
 
 touch get_instance_metadata.sh  
 
 
-5. Edit the file "get_instance_metadata.sh" :
+**5. Edit the file "get_instance_metadata.sh" :**
    
 
 vim get_instance_metadata.sh   
 
 
-6. Script:
+**6. Script:**
    
 
 #!/bin/bash  
@@ -102,7 +102,7 @@ fi
  chmod +x get_instance_metadata.sh  
  
 
-8. Run the script:
+**8. Run the script:**
    
  
 ./get_instance_metadata.sh    
